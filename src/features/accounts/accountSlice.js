@@ -1,43 +1,51 @@
-const initialStateAccount = {
+//this new slice is to be used with the redux toolkit latest method
+import { createSlice } from "@reduxjs/toolkit";
+
+const initialState = {
   balance: 0,
   loan: 0,
   loanPurpose: "",
   isLoading: false,
 };
 
-export default function accountReducer(
-  state = initialStateAccount,
-  { type, payload }
-) {
-  switch (type) {
-    case "account/deposit":
-      return { ...state, balance: state.balance + payload, isLoading: false };
+const accountSlice = createSlice({
+  name: "account",
+  initialState,
+  reducers: {
+    deposit(state, { type, payload }) {
+      state.balance = state.balance + payload;
+      state.isLoading = false;
+    },
+    withdraw(state, { type, payload }) {
+      state.balance = state.balance - payload;
+    },
+    requestLoan: {
+      prepare(amount, purpose) {
+        return {
+          payload: { amount, purpose },
+        };
+      },
+      reducer(state, { type, payload }) {
+        if (state.loan > 0) return;
 
-    case "account/withdraw":
-      return { ...state, balance: state.balance - payload };
-    case "account/convertingCurrency":
-      return { ...state, isLoading: true };
-    case "account/requestLoan":
-      if (state.loan > 0) return state;
-      return {
-        ...state,
-        loan: payload.amount,
-        loanPurpose: payload.purpose,
-        balance: payload.amount + state.balance,
-      };
-    case "account/payLoan":
-      return {
-        ...state,
-        loan: 0,
-        loanPurpose: "",
-        balance: state.balance - state.loan,
-      };
-    default:
-      return state;
-  }
-}
-
-//action creator functions---->they return actions
+        state.loan = payload.amount;
+        state.loanPurpose = payload.purpose;
+        state.balance += payload.amount;
+      },
+    },
+    payLoan(state) {
+      state.balance -= state.loan;
+      state.loan = 0;
+      state.loanPurpose = "";
+    },
+    convertingCurrency(state) {
+      state.isLoading = true;
+    },
+  },
+});
+//redux is advanced enough and smart to figure out that the
+//action creator is the function below for deposit and
+//thunkis provided be default in redux toolkit
 export function deposit(amount, currency) {
   if (currency === "USD") {
     return {
@@ -61,23 +69,5 @@ export function deposit(amount, currency) {
     });
   };
 }
-export function withdraw(amount) {
-  return {
-    type: "account/withdraw",
-    payload: amount,
-  };
-}
-export function requestLoan(amount, purpose) {
-  return {
-    type: "account/requestLoan",
-    payload: {
-      amount,
-      purpose,
-    },
-  };
-}
-export function payLoan() {
-  return {
-    type: "account/payLoan",
-  };
-}
+export const { withdraw, requestLoan, payLoan } = accountSlice.actions;
+export default accountSlice.reducer;
